@@ -67,8 +67,22 @@ top_revenue_df = main_df.groupby("product_category_name_english").price.sum().so
 sns.barplot(x="price", y="product_category_name_english", data=top_revenue_df, palette="viridis", ax=ax)
 ax.set_title("10 Kategori dengan Pendapatan Tertinggi", fontsize=20)
 st.pyplot(fig)
+# 3. Visualization 2 : Satisfication vs Sales
+st.subheader("Customer Satisfaction by Product Category")
+fig_sat, ax = plt.subplots(figsize=(16, 8))
+# Ambil rata-rata skor review per kategori
+avg_review_df = main_df.groupby("product_category_name_english").review_score.mean().sort_values(ascending=False).head(10).reset_index()
 
-# 3. Analisis RFM (Sederhana)
+sns.barplot(x="review_score", y="product_category_name_english", data=avg_review_df, palette="rocket", ax=ax)
+st.pyplot(fig_sat)
+# 4. Analisis RFM (Sederhana)
+recent_date = main_df['order_purchase_timestamp'].max() + pd.Timedelta(days=1)
+rfm_df = main_df.groupby(by="customer_unique_id", as_index=False).agg({
+    "order_purchase_timestamp": lambda x: (recent_date - x.max()).days,
+    "order_id": "nunique",
+    "price": "sum"
+})
+rfm_df.columns = ["customer_id", "recency", "frequency", "monetary"]
 st.subheader("Best Customer Based on RFM Parameters")
 fig_rfm, ax = plt.subplots(nrows=1, ncols=3, figsize=(30, 10)) # Ukuran disesuaikan agar rapi
 
