@@ -70,7 +70,8 @@ st.pyplot(fig)
 
 # 3. Analisis RFM (Sederhana)
 st.subheader("Best Customer Based on RFM Parameters")
-# ... (Masukkan kode plot RFM yang sudah kita buat sebelumnya di sini)
+fig_rfm, ax = plt.subplots(figsize=(16, 8))
+# ... masukkan logika plotting RFM Anda di sini ...
 st.pyplot(fig_rfm)
 
 st.caption('Copyright (c) Diko Duwi Saputra 2026')
