@@ -18,7 +18,7 @@ st.set_page_config(page_title="E-Commerce Performance Dashboard", layout="wide")
 
 # Load Data
 def load_data():
-    df = pd.read_csv("dashboard/main_data.csv")
+    df = pd.read_csv("dashboard/main_data.csv.gz")
     df['order_purchase_timestamp'] = pd.to_datetime(df['order_purchase_timestamp'])
     return df
 
