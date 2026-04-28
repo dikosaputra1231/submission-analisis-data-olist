@@ -67,8 +67,7 @@ st.divider()
 
 # 2. Visualization 1: Tren Pendapatan (SMART Q1)
 st.subheader("Monthly Revenue Trend")
-monthly_revenue_df = main_df.resample(rule='M', on='order_purchase_timestamp').agg({"price": "sum"}).reset_index()
-
+monthly_revenue_df = main_df.resample(rule='ME', on='order_purchase_timestamp').agg({"price": "sum"}).reset_index()
 fig_trend, ax = plt.subplots(figsize=(16, 6))
 ax.plot(monthly_revenue_df["order_purchase_timestamp"], monthly_revenue_df["price"], marker='o', linewidth=2, color="#72BCD4")
 ax.set_title("Tren Pendapatan Bulanan (BRL)", fontsize=20)
