@@ -18,6 +18,7 @@ st.set_page_config(page_title="E-Commerce Performance Dashboard", layout="wide")
 
 # Load Data
 def load_data():
+    # Pastikan file ini ada di folder dashboard di GitHub kamu
     df = pd.read_csv("dashboard/main_data.csv.gz")
     df['order_purchase_timestamp'] = pd.to_datetime(df['order_purchase_timestamp'])
     return df
@@ -33,12 +34,15 @@ with st.sidebar:
     min_date = all_df["order_purchase_timestamp"].min()
     max_date = all_df["order_purchase_timestamp"].max()
 
-    start_date, end_date = st.date_input(
-        label='Rentang Waktu',
-        min_value=min_date,
-        max_value=max_date,
-        value=[min_date, max_date]
-    )
+    try:
+        start_date, end_date = st.date_input(
+            label='Rentang Waktu',
+            min_value=min_date,
+            max_value=max_date,
+            value=[min_date, max_date]
+        )
+    except Exception:
+        start_date, end_date = min_date, max_date
 
 # Filter Data berdasarkan input sidebar
 main_df = all_df[(all_df["order_purchase_timestamp"] >= str(start_date)) &
@@ -59,23 +63,46 @@ with col3:
     avg_review = round(main_df.review_score.mean(), 2)
     st.metric("Average Review Score", value=avg_review)
 
-# 2. Visualization 1: Top Revenue Category
-st.subheader("Top Revenue by Product Category")
-fig, ax = plt.subplots(figsize=(16, 8))
-top_revenue_df = main_df.groupby("product_category_name_english").price.sum().sort_values(ascending=False).head(10).reset_index()
+st.divider()
 
-sns.barplot(x="price", y="product_category_name_english", data=top_revenue_df, palette="viridis", ax=ax)
-ax.set_title("10 Kategori dengan Pendapatan Tertinggi", fontsize=20)
-st.pyplot(fig)
-# 3. Visualization 2 : Satisfication vs Sales
-st.subheader("Customer Satisfaction by Product Category")
-fig_sat, ax = plt.subplots(figsize=(16, 8))
-# Ambil rata-rata skor review per kategori
-avg_review_df = main_df.groupby("product_category_name_english").review_score.mean().sort_values(ascending=False).head(10).reset_index()
+# 2. Visualization 1: Tren Pendapatan (SMART Q1)
+st.subheader("Monthly Revenue Trend")
+monthly_revenue_df = main_df.resample(rule='M', on='order_purchase_timestamp').agg({"price": "sum"}).reset_index()
 
-sns.barplot(x="review_score", y="product_category_name_english", data=avg_review_df, palette="rocket", ax=ax)
-st.pyplot(fig_sat)
-# 4. Analisis RFM (Sederhana)
+fig_trend, ax = plt.subplots(figsize=(16, 6))
+ax.plot(monthly_revenue_df["order_purchase_timestamp"], monthly_revenue_df["price"], marker='o', linewidth=2, color="#72BCD4")
+ax.set_title("Tren Pendapatan Bulanan (BRL)", fontsize=20)
+ax.grid(True, linestyle='--', alpha=0.5)
+st.pyplot(fig_trend)
+st.write("**Insight:** Terdapat lonjakan pendapatan signifikan pada akhir tahun 2017 yang menunjukkan efektivitas promo musiman.")
+
+# 3. Visualization 2: Kategori Terlaris & Kepuasan (SMART Q2)
+st.subheader("Product Category Analysis")
+col_a, col_b = st.columns(2)
+
+with col_a:
+    st.write("#### Top Revenue by Category")
+    fig_rev, ax = plt.subplots(figsize=(10, 6))
+    top_revenue_df = main_df.groupby("product_category_name_english").price.sum().sort_values(ascending=False).head(10).reset_index()
+    sns.barplot(x="price", y="product_category_name_english", data=top_revenue_df, palette="viridis", ax=ax)
+    st.pyplot(fig_rev)
+
+with col_b:
+    st.write("#### Top Review Score by Category")
+    fig_sat, ax = plt.subplots(figsize=(10, 6))
+    avg_review_df = main_df.groupby("product_category_name_english").review_score.mean().sort_values(ascending=False).head(10).reset_index()
+    sns.barplot(x="review_score", y="product_category_name_english", data=avg_review_df, palette="rocket", ax=ax)
+    ax.set_xlim(0, 5) # Rating maksimal 5
+    st.pyplot(fig_sat)
+
+st.write("**Insight:** Kategori terlaris tidak selalu memiliki rating tertinggi. Hal ini menunjukkan perlunya audit kualitas pada produk dengan volume penjualan tinggi.")
+
+st.divider()
+
+# 4. Analisis RFM (SMART Q3)
+st.subheader("Best Customer Based on RFM Parameters")
+
+# Hitung RFM
 recent_date = main_df['order_purchase_timestamp'].max() + pd.Timedelta(days=1)
 rfm_df = main_df.groupby(by="customer_unique_id", as_index=False).agg({
     "order_purchase_timestamp": lambda x: (recent_date - x.max()).days,
@@ -83,32 +110,26 @@ rfm_df = main_df.groupby(by="customer_unique_id", as_index=False).agg({
     "price": "sum"
 })
 rfm_df.columns = ["customer_id", "recency", "frequency", "monetary"]
-st.subheader("Best Customer Based on RFM Parameters")
-fig_rfm, ax = plt.subplots(nrows=1, ncols=3, figsize=(30, 10)) # Ukuran disesuaikan agar rapi
 
+fig_rfm, ax = plt.subplots(nrows=1, ncols=3, figsize=(35, 15))
 colors = ["#72BCD4", "#72BCD4", "#72BCD4", "#72BCD4", "#72BCD4"]
 
 # Visualisasi Recency
 sns.barplot(y="recency", x="customer_id", data=rfm_df.sort_values(by="recency", ascending=True).head(5), palette=colors, ax=ax[0])
-ax[0].set_ylabel(None)
-ax[0].set_xlabel(None)
-ax[0].set_title("By Recency (days)", loc="center", fontsize=18)
-ax[0].tick_params(axis ='x', labelsize=12, rotation=45) # Rotation 45 biasanya sudah cukup
+ax[0].set_title("By Recency (days)", loc="center", fontsize=30)
+ax[0].tick_params(axis='x', labelsize=20, rotation=45)
 
 # Visualisasi Frequency
 sns.barplot(y="frequency", x="customer_id", data=rfm_df.sort_values(by="frequency", ascending=False).head(5), palette=colors, ax=ax[1])
-ax[1].set_ylabel(None)
-ax[1].set_xlabel(None)
-ax[1].set_title("By Frequency", loc="center", fontsize=18)
-ax[1].tick_params(axis='x', labelsize=12, rotation=45)
+ax[1].set_title("By Frequency", loc="center", fontsize=30)
+ax[1].tick_params(axis='x', labelsize=20, rotation=45)
 
 # Visualisasi Monetary
 sns.barplot(y="monetary", x="customer_id", data=rfm_df.sort_values(by="monetary", ascending=False).head(5), palette=colors, ax=ax[2])
-ax[2].set_ylabel(None)
-ax[2].set_xlabel(None)
-ax[2].set_title("By Monetary", loc="center", fontsize=18)
-ax[2].tick_params(axis='x', labelsize=12, rotation=45)
-plt.suptitle("Best Customer Based on RFM Parameters (customer_id)", fontsize=25)
+ax[2].set_title("By Monetary", loc="center", fontsize=30)
+ax[2].tick_params(axis='x', labelsize=20, rotation=45)
+
 st.pyplot(fig_rfm)
+st.write("**Insight:** Sebagian besar pelanggan adalah *one-time buyers*. Program loyalitas harus difokuskan pada pelanggan dengan skor Monetary tinggi.")
 
 st.caption('Copyright (c) Diko Duwi Saputra 2026')
